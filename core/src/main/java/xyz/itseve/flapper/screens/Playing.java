@@ -10,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 
 import xyz.itseve.flapper.Flapper;
 import xyz.itseve.flapper.entities.EntityPool;
+import xyz.itseve.flapper.entities.Ground;
 import xyz.itseve.flapper.entities.Player;
 import xyz.itseve.flapper.util.ScaledRenderer;
 
@@ -29,6 +30,10 @@ public class Playing implements Screen {
     @Override public void show() {
 
         background = new Texture(Gdx.files.internal("sprites/background-day.png"));
+
+        // Two ground :3
+        entities.push(Ground.class, flapper, false);
+        entities.push(Ground.class, flapper, true);
 
         entities.push(Player.class, flapper);
     }

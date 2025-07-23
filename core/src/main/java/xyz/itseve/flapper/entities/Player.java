@@ -11,7 +11,9 @@ import java.util.List;
 import xyz.itseve.flapper.Flapper;
 import xyz.itseve.flapper.util.MathF;
 
+@SuppressWarnings("FieldCanBeLocal")
 public class Player extends Entity {
+    //#region Fields
     private TextureRegion sprite;
     private final List<Texture> sprites = new ArrayList<>();
     private float switchTime = 0.15f;
@@ -30,8 +32,9 @@ public class Player extends Entity {
     private final float FALLING_SPEED = 0.15f;
 
     private float rotation = 0;
-    private float rotationSpeed = 350;
+    private final float ROTATION_SPEED = 400;
     private float rotationAngle;
+    //#endregion
 
     private final Flapper flapper;
     public Player(Flapper flapper) {
@@ -71,7 +74,7 @@ public class Player extends Entity {
 
         //#region Movement and Gravity
         velocity.y = MathF.moveTowards(velocity.y, -TERMINAL_VELOCITY, GRAVITY * delta);
-        rotation = MathF.moveTowards(rotation, rotationAngle, rotationSpeed * delta);
+        rotation = MathF.moveTowards(rotation, rotationAngle, ROTATION_SPEED * delta);
 
         // PC jumping
         if (
@@ -82,7 +85,13 @@ public class Player extends Entity {
         // Mobile jumping
         if (Gdx.input.justTouched()) jump();
 
-        if (velocity.y < -50) {
+        // Bonk
+        if (position.y >= flapper.GAME_SIZE.y + 10) {
+            position.y = flapper.GAME_SIZE.y + 9;
+            velocity.y = 0;
+        }
+
+        if (velocity.y < -20) {
             rotationAngle = MAX_DOWNWARD_ANGLE;
             switchTime = FALLING_SPEED;
         }
