@@ -8,6 +8,6 @@ public abstract class Entity {
     public abstract void update(float delta);
     public abstract void render(float delta);
 
-    Vector2 position = new Vector2();
-    Vector2 velocity = new Vector2();
+    public Vector2 position = new Vector2();
+    public Vector2 velocity = new Vector2();
 }

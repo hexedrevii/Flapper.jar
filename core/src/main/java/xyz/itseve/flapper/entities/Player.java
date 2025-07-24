@@ -11,7 +11,6 @@ import java.util.List;
 import xyz.itseve.flapper.Flapper;
 import xyz.itseve.flapper.util.MathF;
 
-@SuppressWarnings("FieldCanBeLocal")
 public class Player extends Entity {
     //#region Fields
     private TextureRegion sprite;
@@ -21,18 +20,18 @@ public class Player extends Entity {
     private boolean reverse = false;
     private float time = 0;
 
-    private final float GRAVITY = 450.5f;
-    private final float TERMINAL_VELOCITY = 700.5f;
-    private final float JUMP_VELOCITY = 200.0f;
+    private final static float GRAVITY = 450.5f;
+    private final static float TERMINAL_VELOCITY = 750.5f;
+    private final static float JUMP_VELOCITY = 210.0f;
 
-    private final float MAX_DOWNWARD_ANGLE = -40;
-    private final float MAX_UPWARDS_ANGLE = 20;
+    private final static float MAX_DOWNWARD_ANGLE = -40;
+    private final static float MAX_UPWARDS_ANGLE = 20;
 
-    private final float FLAPPING_SPEED = 0.05f;
-    private final float FALLING_SPEED = 0.15f;
+    private final static float FLAPPING_SPEED = 0.05f;
+    private final static float FALLING_SPEED = 0.15f;
 
     private float rotation = 0;
-    private final float ROTATION_SPEED = 400;
+    private final static float ROTATION_SPEED = 400;
     private float rotationAngle;
     //#endregion
 
