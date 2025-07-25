@@ -3,15 +3,17 @@ package xyz.itseve.flapper.entities;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.math.Vector2;
 
 import xyz.itseve.flapper.Flapper;
+import xyz.itseve.flapper.components.Collider;
 
 public class Pipe extends Entity {
     private Texture texture;
     private Sprite sprite;
 
     private final boolean flipped;
-    private final static float SPEED = 200;
+    private final static float SPEED = 170;
 
     private final Flapper flapper;
     public Pipe(Flapper flapper, Boolean flipped) {
@@ -39,6 +41,10 @@ public class Pipe extends Entity {
 
         position.x = flapper.GAME_SIZE.x + texture.getWidth();
         sprite.setPosition(position.x, position.y);
+
+        pushComponent(Collider.class, position, new Vector2(
+            texture.getWidth(), texture.getHeight()
+        ));
     }
 
     @Override public void update(float delta) {

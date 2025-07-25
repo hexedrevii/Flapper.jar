@@ -8,7 +8,7 @@ import xyz.itseve.flapper.Flapper;
 public class Ground extends Entity {
     private Texture sprite;
 
-    private final static float SPEED = 200f;
+    private final static float SPEED = 170f;
 
     private final Flapper flapper;
     private final boolean second;

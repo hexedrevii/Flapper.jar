@@ -8,6 +8,9 @@ import java.util.function.Consumer;
 
 public class EntityPool {
     private final List<Entity> entities = new ArrayList<>();
+    public List<Entity> entities() {
+        return entities;
+    }
 
     private Consumer<Entity> onEntityUpdate;
     public void setOnEntityUpdate(Consumer<Entity> action) {
@@ -46,7 +49,7 @@ public class EntityPool {
 
     public void update(float delta) {
         for (Entity e : entities) {
-            e.update(delta);
+            e.process(delta);
             if (onEntityUpdate != null) onEntityUpdate.accept(e);
         }
 
@@ -57,6 +60,6 @@ public class EntityPool {
     }
 
     public void render(float delta) {
-        for (Entity e : entities) e.render(delta);
+        for (Entity e : entities) e.draw(delta);
     }
 }

@@ -4,11 +4,14 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector2;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import xyz.itseve.flapper.Flapper;
+import xyz.itseve.flapper.components.Collider;
 import xyz.itseve.flapper.util.MathF;
 
 public class Player extends Entity {
@@ -33,6 +36,8 @@ public class Player extends Entity {
     private float rotation = 0;
     private final static float ROTATION_SPEED = 400;
     private float rotationAngle;
+
+    private PlayerState state = PlayerState.ALIVE;
     //#endregion
 
     private final Flapper flapper;
@@ -46,6 +51,18 @@ public class Player extends Entity {
         switchTime = FLAPPING_SPEED;
     }
 
+    private void cycleAnimation(float delta) {
+        time += delta;
+        if (time >= switchTime) {
+            spriteIdx += reverse ? -1 : 1;
+            if (spriteIdx >= sprites.size() - 1) reverse = true;
+            else if (spriteIdx <= 0) reverse = false;
+
+            sprite.setTexture(sprites.get(spriteIdx));
+            time = 0;
+        }
+    }
+
     @Override public void show() {
         sprites.add(new Texture(Gdx.files.internal("sprites/yellowbird-downflap.png")));
         sprites.add(new Texture(Gdx.files.internal("sprites/yellowbird-midflap.png")));
@@ -57,47 +74,74 @@ public class Player extends Entity {
         int offset = 10;
         position.x = flapper.GAME_SIZE.x * 0.5f - sprite.getTexture().getWidth() - offset;
         position.y = flapper.GAME_SIZE.y * 0.5f;
+
+        pushComponent(Collider.class, position, new Vector2(
+            sprite.getTexture().getWidth(),
+            sprite.getTexture().getHeight()
+        ));
+
+        Optional<Collider> collider = get(Collider.class);
+        collider.ifPresent(value -> value.onCollide = (e) -> {
+            // Ground
+            if (e.id() == 1) {
+                state = PlayerState.DEAD;
+                return;
+            }
+
+            if (state != PlayerState.DEAD) {
+                state = PlayerState.FALLING;
+                rotationAngle = MAX_DOWNWARD_ANGLE;
+            }
+        });
     }
 
     @Override public void update(float delta) {
-        // Cycle animation
-        time += delta;
-        if (time >= switchTime) {
-            spriteIdx += reverse ? -1 : 1;
-            if (spriteIdx >= sprites.size() - 1) reverse = true;
-            else if (spriteIdx <= 0) reverse = false;
-
-            sprite.setTexture(sprites.get(spriteIdx));
-            time = 0;
-        }
-
-        //#region Movement and Gravity
-        velocity.y = MathF.moveTowards(velocity.y, -TERMINAL_VELOCITY, GRAVITY * delta);
         rotation = MathF.moveTowards(rotation, rotationAngle, ROTATION_SPEED * delta);
 
-        // PC jumping
-        if (
-            Gdx.input.isKeyJustPressed(Input.Keys.SPACE) ||
-            Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
-        ) jump();
+        switch (state) {
+            case ALIVE:
+                cycleAnimation(delta);
 
-        // Mobile jumping
-        if (Gdx.input.justTouched()) jump();
+                //#region Movement and Gravity
+                velocity.y = MathF.moveTowards(velocity.y, -TERMINAL_VELOCITY, GRAVITY * delta);
+                // PC jumping
+                if (
+                    Gdx.input.isKeyJustPressed(Input.Keys.SPACE) ||
+                        Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)
+                ) jump();
 
-        // Bonk
-        if (position.y >= flapper.GAME_SIZE.y + 10) {
-            position.y = flapper.GAME_SIZE.y + 9;
-            velocity.y = 0;
+                // Mobile jumping
+                if (Gdx.input.justTouched()) jump();
+
+                // Bonk
+                if (position.y >= flapper.GAME_SIZE.y + 10) {
+                    position.y = flapper.GAME_SIZE.y + 9;
+                    velocity.y = 0;
+                }
+
+                if (velocity.y < -20) {
+                    rotationAngle = MAX_DOWNWARD_ANGLE;
+                    switchTime = FALLING_SPEED;
+                }
+
+                position.x += velocity.x * delta;
+                position.y += velocity.y * delta;
+                //#endregion
+
+                break;
+
+            case DEAD:
+                break;
+
+            case FALLING:
+                cycleAnimation(delta);
+
+                velocity.y = MathF.moveTowards(velocity.y, -TERMINAL_VELOCITY, GRAVITY * delta);
+                position.x += velocity.x * delta;
+                position.y += velocity.y * delta;
+
+                break;
         }
-
-        if (velocity.y < -20) {
-            rotationAngle = MAX_DOWNWARD_ANGLE;
-            switchTime = FALLING_SPEED;
-        }
-
-        position.x += velocity.x * delta;
-        position.y += velocity.y * delta;
-        //#endregion
     }
 
     @Override public void render(float delta) {

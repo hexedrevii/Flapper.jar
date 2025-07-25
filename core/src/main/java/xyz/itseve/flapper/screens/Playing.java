@@ -4,11 +4,17 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 import xyz.itseve.flapper.Flapper;
+import xyz.itseve.flapper.components.Collider;
+import xyz.itseve.flapper.entities.Bound;
+import xyz.itseve.flapper.entities.Entity;
 import xyz.itseve.flapper.entities.EntityPool;
 import xyz.itseve.flapper.entities.Ground;
 import xyz.itseve.flapper.entities.Player;
@@ -25,7 +31,7 @@ public class Playing implements Screen {
     private final EntityPool pipes = new EntityPool();
 
     private float pipeSpawnTime = 0;
-    private final float PIPE_SPAWN_TIMEOUT = 1.5f;
+    private final static float PIPE_SPAWN_TIMEOUT = 1.5f;
 
     private Texture background;
     //#endregion
@@ -44,10 +50,16 @@ public class Playing implements Screen {
 
         entities.push(Player.class, flapper);
 
+        pipes.push(Bound.class, 1);
+
         pipes.setOnEntityUpdate(e -> {
-            Pipe self = (Pipe)e;
-            if (self.position.x <= -self.getTextureWidth()) {
-                pipes.queueRemove(e);
+            try {
+                Pipe self = (Pipe) e;
+                if (self.position.x <= -self.getTextureWidth()) {
+                    pipes.queueRemove(e);
+                }
+            } catch (ClassCastException ex) {
+                // This can be safely ignored
             }
         });
     }
@@ -55,6 +67,26 @@ public class Playing implements Screen {
     @Override public void render(float delta) {
         entities.update(delta);
         handlePipes(delta);
+
+        // Check collisions
+        for (int i = 0; i < entities.entities().size(); i++) {
+            Entity entity = entities.entities().get(i);
+            Optional<Collider> entityCollider = entity.get(Collider.class);
+            if (entityCollider.isEmpty()) continue;
+
+            for (int j = 0; j < pipes.entities().size(); j++) {
+                Entity other = pipes.entities().get(j);
+                Optional<Collider> otherCollider = other.get(Collider.class);
+                if (otherCollider.isEmpty()) continue;
+
+                Collider entityColliderVal = entityCollider.get();
+                if (entityColliderVal.overlaps(otherCollider.get())) {
+                    if (entityColliderVal.onCollide != null) {
+                        entityColliderVal.onCollide.accept(other);
+                    }
+                }
+            }
+        }
 
         renderer.begin();
         ScreenUtils.clear(Color.SKY);
@@ -85,7 +117,7 @@ public class Playing implements Screen {
             Pipe firstPipe = new Pipe(flapper, false);
             Pipe secondPipe = new Pipe(flapper, true);
 
-            float pipeY = MathF.nextFloat(new Random(), -120, 110);
+            float pipeY = MathF.nextFloat(new Random(), -170, 80);
             firstPipe.position.y = pipeY;
 
             int pipeGap = 80;
