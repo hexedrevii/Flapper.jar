@@ -12,10 +12,15 @@ import java.util.Optional;
 
 import xyz.itseve.flapper.Flapper;
 import xyz.itseve.flapper.components.Collider;
+import xyz.itseve.flapper.observers.Observer;
+import xyz.itseve.flapper.observers.ObserverID;
+import xyz.itseve.flapper.observers.Subject;
 import xyz.itseve.flapper.util.MathF;
 
-public class Player extends Entity {
+public class Player extends Entity implements Subject {
     //#region Fields
+    private final List<Observer> observers = new ArrayList<>();
+
     private TextureRegion sprite;
     private final List<Texture> sprites = new ArrayList<>();
     private float switchTime = 0.15f;
@@ -63,6 +68,16 @@ public class Player extends Entity {
         }
     }
 
+    @Override public void pushObserver(Observer o) {
+        observers.add(o);
+    }
+
+    @Override public void notify(int id) {
+        for (Observer observer : observers) {
+            observer.raise(id);
+        }
+    }
+
     @Override public void show() {
         sprites.add(new Texture(Gdx.files.internal("sprites/yellowbird-downflap.png")));
         sprites.add(new Texture(Gdx.files.internal("sprites/yellowbird-midflap.png")));
@@ -85,12 +100,16 @@ public class Player extends Entity {
             // Ground
             if (e.id() == 1) {
                 state = PlayerState.DEAD;
+                notify(ObserverID.GROUND.id());
+
                 return;
             }
 
             if (state != PlayerState.DEAD) {
                 state = PlayerState.FALLING;
                 rotationAngle = MAX_DOWNWARD_ANGLE;
+
+                notify(ObserverID.PIPE.id());
             }
         });
     }

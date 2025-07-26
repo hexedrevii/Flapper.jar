@@ -4,9 +4,9 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -19,10 +19,13 @@ import xyz.itseve.flapper.entities.EntityPool;
 import xyz.itseve.flapper.entities.Ground;
 import xyz.itseve.flapper.entities.Player;
 import xyz.itseve.flapper.entities.Pipe;
+import xyz.itseve.flapper.observers.Observer;
+import xyz.itseve.flapper.observers.ObserverID;
+import xyz.itseve.flapper.observers.Subject;
 import xyz.itseve.flapper.util.MathF;
 import xyz.itseve.flapper.util.ScaledRenderer;
 
-public class Playing implements Screen {
+public class Playing implements Screen, Observer, Subject {
     //#region Fields
     private final Flapper flapper;
     private final ScaledRenderer renderer;
@@ -34,6 +37,9 @@ public class Playing implements Screen {
     private final static float PIPE_SPAWN_TIMEOUT = 1.5f;
 
     private Texture background;
+
+    private GameState state = GameState.PLAYING;
+    private final List<Observer> observers = new ArrayList<>();
     //#endregion
 
     public Playing(Flapper flapper) {
@@ -45,10 +51,16 @@ public class Playing implements Screen {
         background = new Texture(Gdx.files.internal("sprites/background-day.png"));
 
         // Two ground :3
-        entities.push(Ground.class, flapper, false);
-        entities.push(Ground.class, flapper, true);
+        Ground first = new Ground(flapper, false);
+        pushObserver(first);
+        Ground second = new Ground(flapper, true);
+        pushObserver(second);
 
-        entities.push(Player.class, flapper);
+        entities.addAll(first, second);
+
+        Player player = new Player(flapper);
+        player.pushObserver(this);
+        entities.addAll(player);
 
         pipes.push(Bound.class, 1);
 
@@ -65,27 +77,23 @@ public class Playing implements Screen {
     }
 
     @Override public void render(float delta) {
-        entities.update(delta);
-        handlePipes(delta);
+        switch (state) {
+            case PLAYING:
+                entities.update(delta);
+                handlePipes(delta);
+                handleCollision();
 
-        // Check collisions
-        for (int i = 0; i < entities.entities().size(); i++) {
-            Entity entity = entities.entities().get(i);
-            Optional<Collider> entityCollider = entity.get(Collider.class);
-            if (entityCollider.isEmpty()) continue;
+                break;
 
-            for (int j = 0; j < pipes.entities().size(); j++) {
-                Entity other = pipes.entities().get(j);
-                Optional<Collider> otherCollider = other.get(Collider.class);
-                if (otherCollider.isEmpty()) continue;
+            case IN_FALL:
+                // Still updating the player until it hits the ground.
+                entities.update(delta);
+                handleCollision();
+                break;
 
-                Collider entityColliderVal = entityCollider.get();
-                if (entityColliderVal.overlaps(otherCollider.get())) {
-                    if (entityColliderVal.onCollide != null) {
-                        entityColliderVal.onCollide.accept(other);
-                    }
-                }
-            }
+            case DEAD:
+                // TODO: Panel animations
+                break;
         }
 
         renderer.begin();
@@ -109,6 +117,27 @@ public class Playing implements Screen {
         // If the window is minimized on a desktop (LWJGL3) platform, width and height are 0, which causes problems.
         // In that case, we don't resize anything, and wait for the window to be a normal size before updating.
         if(width <= 0 || height <= 0) return;
+    }
+
+    private void handleCollision() {
+        for (int i = 0; i < entities.entities().size(); i++) {
+            Entity entity = entities.entities().get(i);
+            Optional<Collider> entityCollider = entity.get(Collider.class);
+            if (entityCollider.isEmpty()) continue;
+
+            for (int j = 0; j < pipes.entities().size(); j++) {
+                Entity other = pipes.entities().get(j);
+                Optional<Collider> otherCollider = other.get(Collider.class);
+                if (otherCollider.isEmpty()) continue;
+
+                Collider entityColliderVal = entityCollider.get();
+                if (entityColliderVal.overlaps(otherCollider.get())) {
+                    if (entityColliderVal.onCollide != null) {
+                        entityColliderVal.onCollide.accept(other);
+                    }
+                }
+            }
+        }
     }
 
     private void handlePipes(float delta) {
@@ -136,5 +165,25 @@ public class Playing implements Screen {
 
     @Override public void dispose() {
         renderer.dispose();
+    }
+
+    @Override public void raise(int id) {
+        if (id == ObserverID.GROUND.id()) {
+            state = GameState.DEAD;
+            return;
+        }
+
+        notify(0);
+        state = GameState.IN_FALL;
+    }
+
+    @Override public void pushObserver(Observer o) {
+        observers.add(o);
+    }
+
+    @Override public void notify(int id) {
+        for (Observer observer : observers) {
+            observer.raise(id);
+        }
     }
 }
